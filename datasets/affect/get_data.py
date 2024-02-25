@@ -391,6 +391,41 @@ def get_dataloader(
                       collate_fn=process)
         return train, valid, test
 
+def wrap_dataloader(
+        alldata, batch_size: int = 32, max_seq_len=50, max_pad=False, train_shuffle: bool = True,
+        num_workers: int = 2, flatten_time_series: bool = False, task=None, robust_test=False, data_type='mosi', 
+        raw_path='/home/van/backup/pack/mosi/mosi.hdf5', z_norm=False) -> DataLoader:
+    """Get dataloaders for affect data.
+    Returns:
+        DataLoader: tuple of train dataloader, validation dataloader, test dataloader
+    """
+
+    processed_dataset = {'train': {}, 'test': {}, 'valid': {}}
+    alldata['train'] = drop_entry(alldata['train'])
+    alldata['valid'] = drop_entry(alldata['valid'])
+    alldata['test'] = drop_entry(alldata['test'])
+
+    process = eval("_process_2") if max_pad else eval("_process_1")
+    process = _process_2 if max_pad else _process_1
+
+    for dataset in alldata:
+        processed_dataset[dataset] = alldata[dataset]
+
+    train = DataLoader(Affectdataset(processed_dataset['train'], flatten_time_series, task=task, max_pad=max_pad,               max_pad_num=max_seq_len, data_type=data_type, z_norm=z_norm), \
+                       shuffle=train_shuffle, num_workers=num_workers, batch_size=batch_size, \
+                       collate_fn=process)
+    valid = DataLoader(Affectdataset(processed_dataset['valid'], flatten_time_series, task=task, max_pad=max_pad, max_pad_num=max_seq_len, data_type=data_type, z_norm=z_norm), \
+                       shuffle=False, num_workers=num_workers, batch_size=batch_size, \
+                       collate_fn=process)
+    # test = DataLoader(Affectdataset(processed_dataset['test'], flatten_time_series, task=task), \
+    #                   shuffle=False, num_workers=num_workers, batch_size=batch_size, \
+    #                   collate_fn=process)
+    # test = dict()
+    test = DataLoader(Affectdataset(processed_dataset['test'], flatten_time_series, task=task, max_pad=max_pad, max_pad_num=max_seq_len, data_type=data_type, z_norm=z_norm), \
+                    shuffle=False, num_workers=num_workers, batch_size=batch_size, \
+                    collate_fn=process)
+    return train, valid, test
+
 def _process_1(inputs: List):
     processed_input = []
     processed_input_lengths = []
